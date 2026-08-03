@@ -1,5 +1,6 @@
 package me.capcom.smsgateway.modules.webhooks.db
 
+import androidx.lifecycle.LiveData
 import androidx.room.*
 
 /**
@@ -103,6 +104,16 @@ interface WebhookQueueDao {
         id: String,
         error: String,
     )
+
+    /**
+     * Get the most recent webhook queue entries for a single status (or all when null),
+     * bounded by limit. Filtering happens at the SQL level; no unbounded query.
+     */
+    @Query(
+        "SELECT * FROM webhook_queue WHERE (:status IS NULL OR status = :status) " +
+            "ORDER BY created_at DESC LIMIT :limit"
+    )
+    fun selectLastFiltered(limit: Int, status: String? = null): LiveData<List<WebhookQueueEntity>>
 
     /**
      * Get queue statistics.
