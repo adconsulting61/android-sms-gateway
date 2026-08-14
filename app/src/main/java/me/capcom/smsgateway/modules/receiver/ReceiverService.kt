@@ -7,6 +7,7 @@ import android.util.Base64
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.capcom.smsgateway.helpers.SubscriptionsHelper
+import me.capcom.smsgateway.modules.gateway.GatewayService
 import me.capcom.smsgateway.modules.incoming.IncomingMessagesService
 import me.capcom.smsgateway.modules.incoming.db.IncomingMessageType
 import me.capcom.smsgateway.modules.logs.LogsService
@@ -26,6 +27,7 @@ class ReceiverService : KoinComponent {
     private val logsService: LogsService by inject()
     private val incomingMessagesService: IncomingMessagesService by inject()
     private val receiverSettings: ReceiverSettings by inject()
+    private val gatewayService: GatewayService by inject()
 
     private val eventsReceiver by lazy { EventsReceiver() }
     private val mmsContentObserver by lazy { MmsContentObserver() }
@@ -167,6 +169,15 @@ class ReceiverService : KoinComponent {
 
             webHooksService.emit(context, type, payload)
         }
+
+        gatewayService.enqueueInboxMessage(
+            context,
+            message,
+            incoming.sender,
+            recipient,
+            simNumber,
+            message.date
+        )
 
         logsService.insert(
             LogEntry.Priority.DEBUG,

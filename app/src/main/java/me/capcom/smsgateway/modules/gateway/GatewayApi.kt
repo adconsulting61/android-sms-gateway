@@ -100,13 +100,10 @@ class GatewayApi(
     }
 
     suspend fun postInbox(token: String, messages: List<InboxMessage>) {
-        val batchSize = 100
-        for (batch in messages.chunked(batchSize)) {
-            client.post("$baseUrl/inbox") {
-                bearerAuth(token)
-                contentType(ContentType.Application.Json)
-                setBody(batch)
-            }
+        client.post("$baseUrl/inbox") {
+            bearerAuth(token)
+            contentType(ContentType.Application.Json)
+            setBody(messages)
         }
     }
 
@@ -265,7 +262,7 @@ class GatewayApi(
 
     data class InboxMessage(
         val id: String,
-        val type: InboxMessageType,
+        val type: String,
         val sender: String,
         val recipient: String?,
         val simNumber: Int?,
