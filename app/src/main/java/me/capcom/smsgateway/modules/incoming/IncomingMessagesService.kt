@@ -108,22 +108,27 @@ class IncomingMessagesService(
         }
     }
 
-    suspend fun count(type: IncomingMessageType?, from: Long, to: Long): Int {
-        return repository.count(type, from, to)
+    suspend fun count(type: IncomingMessageType?, processed: Boolean?, from: Long, to: Long): Int {
+        return repository.count(type, processed, from, to)
     }
 
     suspend fun select(
         type: IncomingMessageType?,
+        processed: Boolean?,
         from: Long,
         to: Long,
         limit: Int,
         offset: Int
     ): List<IncomingMessage> {
-        return repository.select(type, from, to, limit, offset)
+        return repository.select(type, processed, from, to, limit, offset)
     }
 
     fun getById(id: String): IncomingMessage? {
         return repository.selectById(id)
+    }
+
+    suspend fun markProcessed(id: String, processed: Boolean): Boolean {
+        return repository.updateProcessed(id, processed)
     }
 
     fun isMessageProcessed(message: InboxMessage): Boolean {

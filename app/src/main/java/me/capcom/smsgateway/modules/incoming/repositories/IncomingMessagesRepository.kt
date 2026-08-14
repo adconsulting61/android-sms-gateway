@@ -11,19 +11,23 @@ class IncomingMessagesRepository(private val dao: IncomingMessagesDao) {
     fun selectLast(limit: Int): LiveData<List<IncomingMessage>> =
         dao.selectLast(limit).distinctUntilChanged()
 
-    suspend fun count(type: IncomingMessageType?, from: Long, to: Long): Int =
-        dao.count(type, from, to)
+    suspend fun count(type: IncomingMessageType?, processed: Boolean?, from: Long, to: Long): Int =
+        dao.count(type, processed, from, to)
 
     suspend fun select(
         type: IncomingMessageType?,
+        processed: Boolean?,
         from: Long,
         to: Long,
         limit: Int,
         offset: Int
     ): List<IncomingMessage> =
-        dao.select(type, from, to, limit, offset)
+        dao.select(type, processed, from, to, limit, offset)
 
     fun selectById(id: String): IncomingMessage? = dao.selectById(id)
+
+    suspend fun updateProcessed(id: String, processed: Boolean): Boolean =
+        dao.updateProcessed(id, processed) > 0
 
     val totals: LiveData<IncomingMessageTotals> = dao.getStats().distinctUntilChanged()
 

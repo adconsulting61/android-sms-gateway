@@ -19,16 +19,23 @@ interface IncomingMessagesDao {
         SELECT COUNT(*)
         FROM incoming_messages
         WHERE (:type IS NULL OR type = :type)
+          AND (:processed IS NULL OR processed = :processed)
           AND createdAt BETWEEN :from AND :to
         """
     )
-    suspend fun count(type: IncomingMessageType?, from: Long, to: Long): Int
+    suspend fun count(
+        type: IncomingMessageType?,
+        processed: Boolean?,
+        from: Long,
+        to: Long
+    ): Int
 
     @Query(
         """
         SELECT *
         FROM incoming_messages
         WHERE (:type IS NULL OR type = :type)
+          AND (:processed IS NULL OR processed = :processed)
           AND createdAt BETWEEN :from AND :to
         ORDER BY createdAt DESC, id DESC
         LIMIT :limit OFFSET :offset
@@ -36,6 +43,7 @@ interface IncomingMessagesDao {
     )
     suspend fun select(
         type: IncomingMessageType?,
+        processed: Boolean?,
         from: Long,
         to: Long,
         limit: Int,
@@ -44,6 +52,9 @@ interface IncomingMessagesDao {
 
     @Query("SELECT * FROM incoming_messages WHERE id = :id LIMIT 1")
     fun selectById(id: String): IncomingMessage?
+
+    @Query("UPDATE incoming_messages SET processed = :processed WHERE id = :id")
+    suspend fun updateProcessed(id: String, processed: Boolean): Int
 
     @Query(
         """

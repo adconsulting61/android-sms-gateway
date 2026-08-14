@@ -1,5 +1,6 @@
 package me.capcom.smsgateway.modules.incoming.db
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -16,6 +17,7 @@ enum class IncomingMessageType {
     indices = [
         Index(value = ["createdAt"]),
         Index(value = ["type"]),
+        Index(value = ["processed"]),
     ]
 )
 data class IncomingMessage(
@@ -27,4 +29,6 @@ data class IncomingMessage(
     val subscriptionId: Int?,
     val contentPreview: String,
     val createdAt: Long = System.currentTimeMillis(),
+    @ColumnInfo(defaultValue = "0")
+    val processed: Boolean = false,
 )

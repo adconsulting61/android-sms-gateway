@@ -11,6 +11,7 @@ enum class AuthScopes(val value: String) {
     InboxList("inbox:list"),
     InboxRead("inbox:read"),
     InboxRefresh("inbox:refresh"),
+    InboxWrite("inbox:write"),
 
     DevicesList("devices:list"),
 

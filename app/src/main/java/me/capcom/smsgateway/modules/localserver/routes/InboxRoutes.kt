@@ -10,6 +10,7 @@ import io.ktor.server.response.header
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
+import io.ktor.server.routing.patch
 import io.ktor.server.routing.post
 import kotlinx.coroutines.CancellationException
 import me.capcom.smsgateway.helpers.DateTimeParser
@@ -58,6 +59,15 @@ class InboxRoutes(
                     return@get
                 }
             } ?: false
+            val processed = call.request.queryParameters["processed"]?.let {
+                it.toBooleanStrictOrNull() ?: run {
+                    call.respond(
+                        HttpStatusCode.BadRequest,
+                        mapOf("message" to "processed must be true or false")
+                    )
+                    return@get
+                }
+            }
             val limit = call.request.queryParameters["limit"]?.toIntOrNull() ?: 50
             val offset = call.request.queryParameters["offset"]?.toIntOrNull() ?: 0
 
@@ -122,7 +132,7 @@ class InboxRoutes(
             }
 
             val total = try {
-                incomingMessagesService.count(type, from, to)
+                incomingMessagesService.count(type, processed, from, to)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -134,7 +144,7 @@ class InboxRoutes(
             }
 
             val messages = try {
-                incomingMessagesService.select(type, from, to, limit, offset)
+                incomingMessagesService.select(type, processed, from, to, limit, offset)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -174,6 +184,41 @@ class InboxRoutes(
                 "attachment; filename=\"${safeName}\""
             )
             call.respond(LocalFileContent(file, parseContentType(attachment.contentType)))
+        }
+
+        patch("{id}") {
+            if (!requireScope(AuthScopes.InboxWrite)) return@patch
+            val id = call.parameters["id"]
+                ?: return@patch call.respond(HttpStatusCode.BadRequest)
+
+            val request = try {
+                call.receive<UpdateInboxMessageRequest>()
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("message" to "Invalid request body"))
+                return@patch
+            }
+
+            val updated = try {
+                incomingMessagesService.markProcessed(id, request.processed)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                call.respond(
+                    HttpStatusCode.InternalServerError,
+                    mapOf("message" to "Failed to update message: ${e.message}")
+                )
+                return@patch
+            }
+
+            if (!updated) {
+                call.respond(HttpStatusCode.NotFound)
+                return@patch
+            }
+
+            val message = incomingMessagesService.getById(id)
+                ?: return@patch call.respond(HttpStatusCode.NotFound)
+
+            call.respond(message.toDomain())
         }
 
         post("refresh") {
@@ -219,7 +264,12 @@ class InboxRoutes(
         val simNumber: Int?,
         val contentPreview: String,
         val createdAt: Date,
+        val processed: Boolean,
         val attachments: List<AttachmentRef> = emptyList(),
+    )
+
+    data class UpdateInboxMessageRequest(
+        val processed: Boolean,
     )
 
     data class AttachmentRef(
@@ -253,6 +303,7 @@ class InboxRoutes(
         simNumber = simNumber,
         contentPreview = contentPreview,
         createdAt = Date(createdAt),
+        processed = processed,
         attachments = if (includeAttachments) listAttachmentRefs(id) else emptyList(),
     )
 }
