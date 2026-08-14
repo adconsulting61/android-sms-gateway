@@ -9,6 +9,7 @@ open class Message(
     val state: ProcessingState,
     val isHashed: Boolean,
     val isEncrypted: Boolean,
+    val simNumber: Int?,
     val scheduleAt: Date?,
     val textMessage: TextMessage?,
     val dataMessage: DataMessage?,

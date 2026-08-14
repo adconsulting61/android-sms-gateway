@@ -7,4 +7,6 @@ data class TokenRequest(
     val ttl: Long?,
     @SerializedName("scopes")
     val scopes: List<String>,
+    @SerializedName("sim_number")
+    val simNumber: Int? = null,
 )

@@ -44,3 +44,10 @@ suspend fun PipelineContext<Unit, ApplicationCall>.requireScope(
     call.respond(HttpStatusCode.Forbidden, mapOf("message" to "Insufficient permissions"))
     return false
 }
+
+fun JWTPrincipal.lockedSimNumber(): Int? = try {
+    getClaim("simNumber", Int::class)
+} catch (e: Exception) {
+    android.util.Log.d("ScopeAuthorization", "Failed to parse simNumber claim", e)
+    null
+}

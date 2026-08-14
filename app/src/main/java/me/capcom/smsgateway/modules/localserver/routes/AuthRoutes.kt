@@ -36,7 +36,16 @@ class AuthRoutes(
         post {
             if (!requireScope(AuthScopes.TokensManage)) return@post
             val request = call.receive<TokenRequest>()
-            val tokens = jwtService.generateTokenPair(request.scopes, request.ttl)
+            if (request.simNumber != null && request.simNumber < 1) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("message" to "sim_number must be >= 1"))
+                return@post
+            }
+            val tokens = try {
+                jwtService.generateTokenPair(request.scopes, request.ttl, request.simNumber)
+            } catch (e: IllegalArgumentException) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("message" to (e.message ?: "Invalid request")))
+                return@post
+            }
             call.respond(
                 HttpStatusCode.Created,
                 TokenResponse(
@@ -45,6 +54,7 @@ class AuthRoutes(
                     accessToken = tokens.access.token,
                     expiresAt = tokens.access.expiresAt,
                     refreshToken = tokens.refresh.token,
+                    simNumber = request.simNumber,
                 )
             )
         }
@@ -84,8 +94,14 @@ class AuthRoutes(
                 return@post
             }
 
+            val originalSimNumber = try {
+                jwtPrincipal.getClaim("original_simNumber", Int::class)
+            } catch (e: Exception) {
+                null
+            }
+
             val refreshed = try {
-                jwtService.refreshTokenPair(jwtID, originalScopes)
+                jwtService.refreshTokenPair(jwtID, originalScopes, originalSimNumber)
             } catch (e: RefreshTokenException) {
                 call.respond(
                     HttpStatusCode.Unauthorized,
@@ -102,6 +118,7 @@ class AuthRoutes(
                     accessToken = refreshed.access.token,
                     expiresAt = refreshed.access.expiresAt,
                     refreshToken = refreshed.refresh.token,
+                    simNumber = originalSimNumber,
                 )
             )
         }

@@ -41,13 +41,19 @@ class JwtService(
     private val algorithm: Algorithm
         get() = Algorithm.HMAC256(settings.jwtSecret)
 
-    suspend fun generateTokenPair(scopes: List<String>, ttlSeconds: Long?): GeneratedTokenPair {
+    suspend fun generateTokenPair(
+        scopes: List<String>,
+        ttlSeconds: Long?,
+        simNumber: Int? = null
+    ): GeneratedTokenPair {
         val effectiveScopes = normalizeAndValidateScopes(scopes)
         val accessTTL = validateAccessTTL(ttlSeconds ?: settings.jwtTtlSeconds)
+        val effectiveSimNumber = validateSimNumber(simNumber)
 
         val pair = buildTokenPair(
             requestedScopes = effectiveScopes,
             accessTTL = accessTTL,
+            simNumber = effectiveSimNumber,
         )
 
         tokensDao.insertPair(pair.accessModel, pair.refreshModel)
@@ -58,7 +64,8 @@ class JwtService(
 
     suspend fun refreshTokenPair(
         refreshTokenID: String,
-        originalScopes: List<String>
+        originalScopes: List<String>,
+        originalSimNumber: Int? = null,
     ): GeneratedTokenPair {
         val validScopes = try {
             normalizeAndValidateScopes(originalScopes)
@@ -78,6 +85,7 @@ class JwtService(
         val pair = buildTokenPair(
             requestedScopes = validScopes,
             accessTTL = settings.jwtTtlSeconds,
+            simNumber = originalSimNumber,
         )
 
         when (
@@ -175,7 +183,18 @@ class JwtService(
         return ttl
     }
 
-    private fun buildTokenPair(requestedScopes: List<String>, accessTTL: Long): BuiltTokenPair {
+    private fun validateSimNumber(simNumber: Int?): Int? {
+        if (simNumber != null) {
+            require(simNumber >= 1) { "simNumber must be >= 1" }
+        }
+        return simNumber
+    }
+
+    private fun buildTokenPair(
+        requestedScopes: List<String>,
+        accessTTL: Long,
+        simNumber: Int? = null,
+    ): BuiltTokenPair {
         val now = Date()
         val accessExpiresAt = Date(now.time + accessTTL * 1000L)
         val refreshTTL = calculateRefreshTTL(accessTTL)
@@ -191,6 +210,7 @@ class JwtService(
             .withExpiresAt(accessExpiresAt)
             .withClaim("scopes", requestedScopes)
             .withClaim("token_use", TokenUse.Access.value)
+            .let { if (simNumber != null) it.withClaim("simNumber", simNumber) else it }
             .sign(algorithm)
 
         val refreshToken = JWT.create()
@@ -201,6 +221,7 @@ class JwtService(
             .withClaim("scopes", listOf(AuthScopes.TokensRefresh.value))
             .withClaim("original_scopes", requestedScopes)
             .withClaim("token_use", TokenUse.Refresh.value)
+            .let { if (simNumber != null) it.withClaim("original_simNumber", simNumber) else it }
             .sign(algorithm)
 
         return BuiltTokenPair(

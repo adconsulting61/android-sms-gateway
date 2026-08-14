@@ -5,6 +5,8 @@ import android.util.Log
 import com.aventrix.jnanoid.jnanoid.NanoIdUtils
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.call
+import io.ktor.server.auth.jwt.JWTPrincipal
+import io.ktor.server.auth.principal
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
@@ -20,6 +22,7 @@ import me.capcom.smsgateway.helpers.DateTimeParser
 import me.capcom.smsgateway.modules.incoming.db.IncomingMessageType
 import me.capcom.smsgateway.modules.localserver.LocalServerSettings
 import me.capcom.smsgateway.modules.localserver.auth.AuthScopes
+import me.capcom.smsgateway.modules.localserver.auth.lockedSimNumber
 import me.capcom.smsgateway.modules.localserver.auth.requireScope
 import me.capcom.smsgateway.modules.localserver.domain.InboxRefreshRequest
 import me.capcom.smsgateway.modules.localserver.domain.messages.DataMessage
@@ -135,6 +138,16 @@ class MessagesRoutes(
                 return@post
             }
 
+            val lockedSim = call.principal<JWTPrincipal>()?.lockedSimNumber()
+            if (lockedSim != null && request.simNumber != null && request.simNumber != lockedSim) {
+                call.respond(
+                    HttpStatusCode.Forbidden,
+                    mapOf("message" to "This token is locked to SIM $lockedSim")
+                )
+                return@post
+            }
+            val effectiveSimNumber = lockedSim ?: request.simNumber
+
             val skipPhoneValidation =
                 call.request.queryParameters["skipPhoneValidation"]
                     ?.toBooleanStrict() ?: false
@@ -174,7 +187,7 @@ class MessagesRoutes(
                 SendParams(
                     request.withDeliveryReport ?: true,
                     skipPhoneValidation = skipPhoneValidation,
-                    simNumber = request.simNumber,
+                    simNumber = effectiveSimNumber,
                     validUntil = request.validUntil,
                     scheduleAt = request.scheduleAt,
                     priority = request.priority,
@@ -281,6 +294,7 @@ class MessagesRoutes(
             state = message.state,
             isHashed = false,
             isEncrypted = message.isEncrypted,
+            simNumber = message.simNumber,
             textMessage = when (includeContent) {
                 true -> message.textContent?.let {
                     TextMessage(it.text)
