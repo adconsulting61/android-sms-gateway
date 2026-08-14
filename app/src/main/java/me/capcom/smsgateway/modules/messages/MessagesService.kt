@@ -143,8 +143,9 @@ class MessagesService(
         val startTime = when {
             workHoursStart != null && workHoursStart < (nextScheduled ?: 0) -> workHoursStart
             scheduleAt != null
-                && scheduleAt > System.currentTimeMillis()
-                && scheduleAt < (nextScheduled ?: 0) -> scheduleAt
+                    && scheduleAt > System.currentTimeMillis()
+                    && scheduleAt < (nextScheduled ?: 0) -> scheduleAt
+
             else -> SendMessagesWorker.IMMEDIATE
         }
 
@@ -225,15 +226,36 @@ class MessagesService(
 
             EventsReceiver.ACTION_DELIVERED -> when (resultCode) {
                 Activity.RESULT_OK -> {
-                    val message = SmsMessage.createFromPdu(
-                        intent.extras?.getByteArray("pdu")
-                    )
-                    when {
-                        message.status.toUInt() < 0b0100000u -> ProcessingState.Delivered to message.status.takeIf { it > 0 }
-                            ?.let { "Delivery result from SC ${message.serviceCenterAddress}: ${message.status}" }
+                    val pdu = intent.extras?.getByteArray("pdu")
+                    val format = intent.getStringExtra("format")
+                    val message = if (format != null
+                        && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+                    ) {
+                        SmsMessage.createFromPdu(pdu, format)
+                    } else {
+                        SmsMessage.createFromPdu(pdu)
+                    }
 
-                        message.status.toUInt() < 0b1000000u -> return // SC will make more attempts
-                        else -> ProcessingState.Failed to "Delivery result from SC ${message.serviceCenterAddress}: ${message.status}"
+                    val status = message.status and 0x7F
+                    val scAddress = message.serviceCenterAddress
+                    logsService.insert(
+                        LogEntry.Priority.DEBUG,
+                        MODULE_NAME,
+                        "Delivery report parsed",
+                        mapOf(
+                            "format" to (format ?: "default(3gpp)"),
+                            "rawStatus" to status,
+                            "status" to (status and 0x7F),
+                            "scAddress" to scAddress,
+                        )
+                    )
+
+                    when {
+                        status < 0b0100000 -> ProcessingState.Delivered to status.takeIf { it > 0 }
+                            ?.let { "Delivery result from SC $scAddress: $it" }
+
+                        status < 0b1000000 -> return // SC will make more attempts
+                        else -> ProcessingState.Failed to "Delivery result from SC $scAddress: $status"
                     }
                 }
 
@@ -643,5 +665,22 @@ class MessagesService(
             SmsManager.RESULT_RIL_GENERIC_ERROR -> "RESULT_RIL_GENERIC_ERROR (A RIL error occurred during the SMS send)"
             else -> "Unknown error code: $resultCode."
         }
+    }
+}
+
+// Pure classification of a delivery report's TP-Status, kept framework-free so it
+// can be unit-tested without Robolectric. Returns null when the SC will make more
+// attempts (temporary error), meaning no state change should be applied.
+internal fun resolveDeliveryOutcome(
+    rawStatus: Int,
+    scAddress: String?,
+): Pair<ProcessingState, String?>? {
+    val status = rawStatus and 0x7F
+    return when {
+        status < 0b0100000 -> ProcessingState.Delivered to status.takeIf { it > 0 }
+            ?.let { "Delivery result from SC $scAddress: $it" }
+
+        status < 0b1000000 -> null // SC will make more attempts
+        else -> ProcessingState.Failed to "Delivery result from SC $scAddress: $status"
     }
 }
