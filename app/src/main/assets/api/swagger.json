@@ -394,6 +394,12 @@
             "minItems": 1,
             "type": "array"
           },
+          "simNumber": {
+            "description": "The SIM card number that sent the message. May be `null` if the SIM cannot be determined or the default was used.",
+            "example": 1,
+            "nullable": true,
+            "type": "integer"
+          },
           "state": {
             "allOf": [
               {
@@ -582,6 +588,11 @@
             "example": "PyDmBQZZXYmyxMwED8Fzy",
             "type": "string"
           },
+          "processed": {
+            "description": "Whether this message has been marked processed via PATCH /inbox/{id}. Defaults to false for newly received messages.",
+            "example": false,
+            "type": "boolean"
+          },
           "recipient": {
             "description": "Recipient phone number on the device",
             "example": "+79990001234",
@@ -614,6 +625,19 @@
           "id",
           "sender",
           "type"
+        ],
+        "type": "object"
+      },
+      "smsgateway.UpdateInboxMessageRequest": {
+        "properties": {
+          "processed": {
+            "description": "New processed status to set for this message.",
+            "example": true,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "processed"
         ],
         "type": "object"
       },
@@ -678,6 +702,7 @@
           "inbox:list",
           "inbox:read",
           "inbox:refresh",
+          "inbox:write",
           "logs:read",
           "messages:send",
           "messages:read",
@@ -697,6 +722,7 @@
           "ScopeInboxList",
           "ScopeInboxRead",
           "ScopeInboxRefresh",
+          "ScopeInboxWrite",
           "ScopeLogsRead",
           "ScopeMessagesSend",
           "ScopeMessagesRead",
@@ -965,6 +991,12 @@
             "minItems": 1,
             "type": "array"
           },
+          "simNumber": {
+            "description": "The SIM card number that sent the message. May be `null` if the SIM cannot be determined or the default was used.",
+            "example": 1,
+            "nullable": true,
+            "type": "integer"
+          },
           "state": {
             "allOf": [
               {
@@ -1220,6 +1252,13 @@
             "minItems": 1,
             "type": "array"
           },
+          "sim_number": {
+            "description": "If set, locks this token to only send messages through this SIM slot (1-3). Requests using this token that specify a different sim_number are rejected.",
+            "example": 1,
+            "minimum": 1,
+            "nullable": true,
+            "type": "integer"
+          },
           "ttl": {
             "description": "lifetime of the access token in seconds",
             "type": "integer"
@@ -1248,6 +1287,12 @@
           "refresh_token": {
             "description": "refresh token",
             "type": "string"
+          },
+          "sim_number": {
+            "description": "SIM slot this token is locked to, if any. Null means the token can send through any SIM.",
+            "example": 1,
+            "nullable": true,
+            "type": "integer"
           },
           "token_type": {
             "description": "type of the access token",
@@ -2085,6 +2130,14 @@
               "default": false,
               "type": "boolean"
             }
+          },
+          {
+            "description": "Filter by processed status. Omit to return both processed and unprocessed messages.",
+            "in": "query",
+            "name": "processed",
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -2170,6 +2223,107 @@
           }
         ],
         "summary": "Get incoming messages",
+        "tags": [
+          "User",
+          "Inbox"
+        ]
+      }
+    },
+    "/inbox/{id}": {
+      "patch": {
+        "description": "Updates the processed status of an incoming message.",
+        "parameters": [
+          {
+            "description": "Incoming message ID",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/smsgateway.UpdateInboxMessageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/smsgateway.IncomingMessage"
+                }
+              }
+            },
+            "description": "The updated message"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/smsgateway.ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/smsgateway.ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/smsgateway.ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/smsgateway.ErrorResponse"
+                }
+              }
+            },
+            "description": "Message not found"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/smsgateway.ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "ApiAuth": []
+          },
+          {
+            "JWTAuth": []
+          }
+        ],
+        "summary": "Mark inbox message processed",
         "tags": [
           "User",
           "Inbox"
