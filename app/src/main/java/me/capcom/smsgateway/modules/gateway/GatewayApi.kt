@@ -99,6 +99,17 @@ class GatewayApi(
         }
     }
 
+    suspend fun postInbox(token: String, messages: List<InboxMessage>) {
+        val batchSize = 100
+        for (batch in messages.chunked(batchSize)) {
+            client.post("$baseUrl/inbox") {
+                bearerAuth(token)
+                contentType(ContentType.Application.Json)
+                setBody(batch)
+            }
+        }
+    }
+
     suspend fun getWebHooks(token: String): List<WebHook> {
         return client.get("$baseUrl/webhooks") {
             bearerAuth(token)
@@ -243,5 +254,32 @@ class GatewayApi(
         val phoneNumber: String?,
         val carrierName: String?,
         val iccid: String?,
+    )
+
+    object InboxMessageType {
+        const val SMS = "SMS"
+        const val DATA_SMS = "DATA_SMS"
+        const val MMS = "MMS"
+        const val MMS_DOWNLOADED = "MMS_DOWNLOADED"
+    }
+
+    data class InboxMessage(
+        val id: String,
+        val type: InboxMessageType,
+        val sender: String,
+        val recipient: String?,
+        val simNumber: Int?,
+        val content: String,
+        val isEncrypted: Boolean = true,
+        val createdAt: Date,
+        val attachments: List<InboxMessageAttachment>?,
+    )
+
+    data class InboxMessageAttachment(
+        val partId: Long,
+        val contentType: String,
+        val name: String,
+        val size: Long?,
+        val data: String, // base64 of raw bytes
     )
 }
