@@ -2,6 +2,7 @@ package me.capcom.smsgateway.modules.encryption.providers
 
 import android.util.Base64
 import me.capcom.smsgateway.modules.encryption.EncryptionSettings
+import java.security.SecureRandom
 import javax.crypto.Cipher
 import javax.crypto.SecretKey
 import javax.crypto.SecretKeyFactory
@@ -37,6 +38,24 @@ class PassphraseEncryptionProvider(
         return decryptText(text, secretKey, salt)
     }
 
+    override suspend fun encrypt(plainText: String): String {
+        val passphrase = requireNotNull(settings.passphrase) { "Passphrase is not set" }
+
+        val salt = ByteArray(SALT_LENGTH)
+        SecureRandom().nextBytes(salt)
+
+        val secretKey = generateSecretKeyFromPassphrase(
+            passphrase.toCharArray(),
+            salt,
+            256,
+            DEFAULT_ITERATION_COUNT
+        )
+
+        val cipherText = encryptText(plainText, secretKey, salt)
+
+        return "i=$DEFAULT_ITERATION_COUNT" + "$" + encode(salt) + "$" + encode(cipherText)
+    }
+
     private fun decryptText(encryptedText: String, secretKey: SecretKey, iv: ByteArray): String {
         val ivSpec = IvParameterSpec(iv)
         val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
@@ -46,15 +65,26 @@ class PassphraseEncryptionProvider(
         return String(decryptedBytes)
     }
 
+    private fun encryptText(plainText: String, secretKey: SecretKey, iv: ByteArray): ByteArray {
+        val ivSpec = IvParameterSpec(iv)
+        val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
+        cipher.init(Cipher.ENCRYPT_MODE, secretKey, ivSpec)
+        return cipher.doFinal(plainText.toByteArray())
+    }
+
     private fun decode(input: String): ByteArray {
         return Base64.decode(input, Base64.DEFAULT)
+    }
+
+    private fun encode(input: ByteArray): String {
+        return Base64.encodeToString(input, Base64.NO_WRAP)
     }
 
     private fun generateSecretKeyFromPassphrase(
         passphrase: CharArray,
         salt: ByteArray,
         keyLength: Int = 256,
-        iterationCount: Int = 300_000
+        iterationCount: Int = DEFAULT_ITERATION_COUNT
     ): SecretKey {
         val keySpec = PBEKeySpec(passphrase, salt, iterationCount, keyLength)
         val keyFactory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1")
@@ -66,5 +96,10 @@ class PassphraseEncryptionProvider(
         return params.split(',')
             .map { it.split('=', limit = 2) }
             .associate { it[0] to it[1] }
+    }
+
+    companion object {
+        private const val SALT_LENGTH = 16
+        private const val DEFAULT_ITERATION_COUNT = 300_000
     }
 }

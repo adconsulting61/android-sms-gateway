@@ -13,4 +13,10 @@ class EncryptionService() {
 
         return EncryptionProviderFactory.create(algorithm).decrypt(encryptedText)
     }
+
+    suspend fun encrypt(plainText: String): String {
+        val algorithm = EncryptionProviderFactory.DEFAULT_ALGORITHM
+        val data = EncryptionProviderFactory.create(algorithm).encrypt(plainText)
+        return "$algorithm$data"
+    }
 }
