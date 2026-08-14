@@ -155,6 +155,10 @@
     <string name="sent_messages">Sent: %1$d</string>
     <string name="delivered_messages">Delivered: %1$d</string>
     <string name="failed_messages">Failed: %1$d</string>
+    <string name="sim_stats_dotdotdot">SIM stats…</string>
+    <string name="sim_stats_summary">Messages sent per SIM card</string>
+    <string name="sim_stats_sent_count">%1$d sent</string>
+    <string name="no_sim_cards_detected">No SIM cards detected</string>
     <string name="incoming_messages">INCOMING</string>
     <string name="incoming_messages_status">📥 Incoming Status</string>
     <string name="incoming_sms_messages">SMS: %1$d</string>

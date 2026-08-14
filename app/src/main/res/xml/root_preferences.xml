@@ -18,6 +18,12 @@
         app:summary="@string/delays_limits_etc" />
 
     <Preference
+        android:icon="@drawable/ic_sim_selection"
+        app:fragment="me.capcom.smsgateway.ui.SimStatsFragment"
+        app:title="@string/sim_stats_dotdotdot"
+        app:summary="@string/sim_stats_summary" />
+
+    <Preference
         android:icon="@drawable/ic_inbox"
         app:fragment="me.capcom.smsgateway.ui.settings.InboxSettingsFragment"
         app:summary="@string/inbox_settings_summary"

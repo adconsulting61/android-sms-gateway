@@ -13,6 +13,7 @@ import me.capcom.smsgateway.data.entities.MessageWithRecipients
 import me.capcom.smsgateway.data.entities.MessagesStats
 import me.capcom.smsgateway.data.entities.MessagesTotals
 import me.capcom.smsgateway.data.entities.RecipientState
+import me.capcom.smsgateway.data.entities.SimSentCount
 import me.capcom.smsgateway.domain.EntitySource
 import me.capcom.smsgateway.domain.ProcessingState
 import java.util.Date
@@ -43,6 +44,16 @@ interface MessagesDao {
 
     @Query("SELECT * FROM message ORDER BY createdAt DESC LIMIT :limit")
     fun selectLast(limit: Int): LiveData<List<Message>>
+
+    @Query(
+        """
+        SELECT simNumber, COUNT(*) as sent
+        FROM message
+        WHERE state IN ('Sent', 'Delivered')
+        GROUP BY simNumber
+    """
+    )
+    fun getSentCountsBySim(): LiveData<List<SimSentCount>>
 
     /**
      * FIFO: oldest pending first (priority DESC, createdAt ASC)

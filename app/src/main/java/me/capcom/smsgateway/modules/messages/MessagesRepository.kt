@@ -9,6 +9,7 @@ import me.capcom.smsgateway.data.entities.MessageRecipient
 import me.capcom.smsgateway.data.entities.MessageType
 import me.capcom.smsgateway.data.entities.MessageWithRecipients
 import me.capcom.smsgateway.data.entities.MessagesTotals
+import me.capcom.smsgateway.data.entities.SimSentCount
 import me.capcom.smsgateway.domain.MessageContent
 import me.capcom.smsgateway.domain.ProcessingState
 import me.capcom.smsgateway.modules.messages.data.SendParams
@@ -22,6 +23,8 @@ class MessagesRepository(private val dao: MessagesDao) {
     fun selectLast(limit: Int) = dao.selectLast(limit).distinctUntilChanged()
 
     val messagesTotals: LiveData<MessagesTotals> = dao.getMessagesStats().distinctUntilChanged()
+
+    val simSentCounts: LiveData<List<SimSentCount>> = dao.getSentCountsBySim().distinctUntilChanged()
 
     fun get(id: String): StoredSendRequest {
         return dao.get(id)?.toRequest()
