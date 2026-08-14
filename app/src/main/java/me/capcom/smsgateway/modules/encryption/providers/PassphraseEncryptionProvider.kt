@@ -15,17 +15,17 @@ class PassphraseEncryptionProvider(
 ) : EncryptionProvider {
     override suspend fun decrypt(encryptedText: String): String {
         val chunks = encryptedText.split('$')
-        if (chunks.size < 5) {
+        if (chunks.size < 3) {
             throw RuntimeException("Invalid passphrase encrypted data format")
         }
 
-        val params = parseParams(chunks[2])
+        val params = parseParams(chunks[0])
         if (!params.containsKey("i")) {
             throw RuntimeException("Missing iteration count")
         }
 
-        val salt = decode(chunks[3])
-        val text = chunks[4]
+        val salt = decode(chunks[1])
+        val text = chunks[2]
 
         val passphrase = requireNotNull(settings.passphrase) { "Passphrase is not set" }
         val secretKey = generateSecretKeyFromPassphrase(

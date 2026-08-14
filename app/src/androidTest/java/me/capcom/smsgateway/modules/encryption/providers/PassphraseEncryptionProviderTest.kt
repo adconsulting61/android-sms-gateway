@@ -4,7 +4,6 @@ import android.util.Base64
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.runBlocking
 import me.capcom.smsgateway.modules.encryption.EncryptionSettings
-import me.capcom.smsgateway.modules.encryption.providers.EncryptionProviderFactory
 import me.capcom.smsgateway.modules.settings.KeyValueStorage
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -41,9 +40,7 @@ class PassphraseEncryptionProviderTest {
             "unicode: 日本語 и ελληνικά",
             "a".repeat(1000),
         )) {
-            val data = provider.encrypt(plain)
-            val full = "v1$" + EncryptionProviderFactory.DEFAULT_ALGORITHM + "$" + data
-            assertEquals(plain, provider.decrypt(full))
+            assertEquals(plain, provider.decrypt(provider.encrypt(plain)))
         }
     }
 

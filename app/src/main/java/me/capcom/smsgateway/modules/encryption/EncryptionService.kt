@@ -10,8 +10,9 @@ class EncryptionService() {
         }
 
         val algorithm = chunks[1]
+        val data = chunks.drop(2).joinToString("$")
 
-        return EncryptionProviderFactory.create(algorithm).decrypt(encryptedText)
+        return EncryptionProviderFactory.create(algorithm).decrypt(data)
     }
 
     suspend fun encrypt(plainText: String): String {
