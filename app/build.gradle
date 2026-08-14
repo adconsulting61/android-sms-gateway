@@ -14,6 +14,7 @@ android {
 
     defaultConfig {
         applicationId "me.capcom.smsgateway"
+        applicationIdSuffix ".dev"
         minSdk 21
         targetSdk 33
         versionCode 1
