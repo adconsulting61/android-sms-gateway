@@ -103,6 +103,72 @@ Other useful tasks:
 You can also do this over Wi-Fi with `adb pair`/`adb connect` instead of USB,
 but USB is simpler to start with.
 
+## Reaching the phone from anywhere (Cloudflare Tunnel)
+
+Local Server mode only works when the caller is on the same LAN as the
+phone. Since the phone needs to be usable from anywhere (not just at home),
+its Local Server is additionally exposed over the internet via a
+**Cloudflare Tunnel** running inside **Termux** on the phone itself —
+Cloud Server mode was deliberately *not* used for this, because none of the
+three custom features above (SIM-locked tokens, the `processed` flag,
+`simNumber` on the read API) exist in Cloud mode's code path; Cloud mode
+talks to capcom6's own hosted `api.sms-gate.app`, which this repo has no
+access to. The tunnel instead makes the *Local Server* itself reachable
+publicly, so all three features keep working from anywhere.
+
+**Setup (Cloudflare dashboard, one-time, already done):**
+- Cloudflare account: `adconsulting61@gmail.com`, domain `valorsystems.app`
+  (already on Cloudflare, nameservers already pointed)
+- Zero Trust → Networks → Tunnels → tunnel named `valor-reach-sms-gateway`
+- Public hostname: `sms.valorsystems.app` → Service type `HTTP` → URL
+  `localhost:8080` (this is `localhost` and not a LAN IP because
+  `cloudflared` runs *on the same phone* as the app itself)
+- The connector token lives only in the Cloudflare dashboard (Tunnels →
+  `valor-reach-sms-gateway` → Configure → "run manually" command) and in
+  the Termux boot script on the phone — intentionally **not** duplicated
+  here, since this is a live credential and this file may end up in a
+  public fork.
+
+**On the phone (Termux, installed from F-Droid, not Play Store):**
+- Battery optimization disabled for Termux (Settings → Apps → Termux →
+  Battery → Unrestricted), otherwise Android kills the background tunnel
+- `cloudflared` must be installed via `pkg install cloudflared`, **not**
+  the raw GitHub release binary — the upstream Linux/arm64 release is
+  built non-PIE, which fails inside Termux with `unexpected e_type: 2`;
+  Termux's own packaged build doesn't have this problem
+- Run with: `cloudflared tunnel run --token <token-from-dashboard>`,
+  ideally after `termux-wake-lock`, in its own Termux session (swipe in
+  from the left edge for the session drawer, or the app's own overflow
+  menu if the swipe gesture doesn't register on this device)
+- For persistence across phone reboots: Termux:Boot (companion app, also
+  F-Droid) plus a `~/.termux/boot/start-tunnel.sh` script that calls
+  `termux-wake-lock` then the same `cloudflared tunnel run --token ...`
+  command
+
+**Known failure modes and what they actually mean:**
+- Visiting `https://sms.valorsystems.app/...` and getting Cloudflare
+  **error 1033** = no `cloudflared` connector is currently connected at
+  all (Termux session closed, phone killed it in the background, etc.) —
+  restart the tunnel command in Termux.
+- Getting a Cloudflare **502 "Bad Gateway" / Host Error** (as opposed to
+  1033) means the tunnel itself *is* connected, but the app's Local
+  Server isn't answering on `localhost:8080` — check the Local Server
+  toggle is actually on in the app, and that its port still matches 8080.
+- Reinstalling the app wipes its stored Local Server username/password
+  (they're randomly generated and stored in app data) — get the new ones
+  from the app's Local Server settings screen after any reinstall.
+- Sideloaded APKs hit Android 13+'s "Restricted settings" protection —
+  granting SEND_SMS (or other runtime permissions) may silently fail with
+  "app was denied access" until you go to Settings → Apps → Valor Reach →
+  ⋮ menu → "Allow restricted settings" first.
+
+Verified working end-to-end 2026-08-15: minted a SIM-1-locked token,
+confirmed a request forcing SIM 2 with that token gets rejected (403,
+`"This token is locked to SIM 1"`), and sent a real SMS through
+`sms.valorsystems.app` with the phone on cellular data (not home Wi-Fi) —
+delivery confirmed, `simNumber: 1` correctly persisted and visible via
+`GET /message/{id}`.
+
 ## The Firebase situation
 
 `app/build.gradle` applies the Google Services Gradle plugin
