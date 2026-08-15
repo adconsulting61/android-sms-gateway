@@ -236,21 +236,35 @@ class MessagesService(
                         SmsMessage.createFromPdu(pdu)
                     }
 
-                    val status = message.status and 0x7F
+                    val rawStatus = message.status
                     val scAddress = message.serviceCenterAddress
+                    val status = if (format == "3gpp2") {
+                        rawStatus
+                    } else {
+                        rawStatus and 0x7F
+                    }
                     logsService.insert(
                         LogEntry.Priority.DEBUG,
                         MODULE_NAME,
                         "Delivery report parsed",
                         mapOf(
                             "format" to (format ?: "default(3gpp)"),
-                            "rawStatus" to status,
-                            "status" to (status and 0x7F),
+                            "rawStatus" to rawStatus,
+                            "status" to status,
                             "scAddress" to scAddress,
                         )
                     )
 
                     when {
+                        format == "3gpp2" -> when (rawStatus ushr 8 and 0x3) {
+                            0 -> ProcessingState.Delivered to (rawStatus and 0xFF).takeIf { it > 0 }
+                                ?.let { "Delivery result from SC $scAddress: $it" }
+
+                            1 -> return // SC will make more attempts
+                            else -> ProcessingState.Failed to
+                                "Delivery result from SC $scAddress: ${rawStatus and 0xFF}"
+                        }
+
                         status < 0b0100000 -> ProcessingState.Delivered to status.takeIf { it > 0 }
                             ?.let { "Delivery result from SC $scAddress: $it" }
 
@@ -665,22 +679,5 @@ class MessagesService(
             SmsManager.RESULT_RIL_GENERIC_ERROR -> "RESULT_RIL_GENERIC_ERROR (A RIL error occurred during the SMS send)"
             else -> "Unknown error code: $resultCode."
         }
-    }
-}
-
-// Pure classification of a delivery report's TP-Status, kept framework-free so it
-// can be unit-tested without Robolectric. Returns null when the SC will make more
-// attempts (temporary error), meaning no state change should be applied.
-internal fun resolveDeliveryOutcome(
-    rawStatus: Int,
-    scAddress: String?,
-): Pair<ProcessingState, String?>? {
-    val status = rawStatus and 0x7F
-    return when {
-        status < 0b0100000 -> ProcessingState.Delivered to status.takeIf { it > 0 }
-            ?.let { "Delivery result from SC $scAddress: $it" }
-
-        status < 0b1000000 -> null // SC will make more attempts
-        else -> ProcessingState.Failed to "Delivery result from SC $scAddress: $status"
     }
 }
