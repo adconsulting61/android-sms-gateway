@@ -21,6 +21,9 @@
     <string name="cloud">Cloud</string>
     <string name="copied_to_clipboard">Copied</string>
     <string name="credentials">Credentials</string>
+    <string name="remote_access">Remote Access</string>
+    <string name="cloudflare_tunnel_token">Cloudflare Tunnel Token</string>
+    <string name="cloudflare_tunnel_token_summary">Optional. From the Cloudflare dashboard: Zero Trust, Networks, Tunnels, your tunnel, Configure, the run manually command\'s --token value. Makes the Local Server reachable over the internet, not just this Wi-Fi network.</string>
     <string name="delays_limits_etc">Delays, limits, etc.</string>
     <string name="delays_seconds">Delays, seconds</string>
     <string name="delete_after_days">Delete after, days</string>

@@ -34,6 +34,14 @@ class LocalServerService(
 
         WebService.start(context)
 
+        // Tied to the same enable/disable the user already controls (the Local Server
+        // toggle) rather than a separate switch — a token with no server running would
+        // just be a tunnel to nothing. No token configured means no tunnel at all,
+        // same LAN-only behavior as before TunnelService existed.
+        if (!settings.tunnelToken.isNullOrBlank()) {
+            TunnelService.start(context)
+        }
+
         scope.launch(Dispatchers.IO) {
             val localIP = LocalIPProvider(context).getIP()
             val remoteIP = PublicIPProvider().getIP()
@@ -44,6 +52,7 @@ class LocalServerService(
 
     fun stop(context: Context) {
         WebService.stop(context)
+        TunnelService.stop(context)
     }
 
     fun isActiveLiveData(context: Context) = WebService.STATUS

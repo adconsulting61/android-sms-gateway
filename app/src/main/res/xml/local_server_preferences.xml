@@ -39,6 +39,14 @@
             android:persistent="false" />
     </PreferenceCategory>
 
+    <PreferenceCategory app:title="@string/remote_access">
+        <EditTextPreference
+            app:icon="@drawable/ic_server"
+            app:key="localserver.TUNNEL_TOKEN"
+            app:title="@string/cloudflare_tunnel_token"
+            app:summary="@string/cloudflare_tunnel_token_summary" />
+    </PreferenceCategory>
+
     <PreferenceCategory app:title="@string/device">
         <Preference
             android:icon="@drawable/ic_device_id"
