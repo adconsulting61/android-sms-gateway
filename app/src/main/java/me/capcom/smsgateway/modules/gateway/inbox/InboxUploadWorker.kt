@@ -75,7 +75,7 @@ class InboxUploadWorker(
         }
 
         return@withContext try {
-            processBatch(BATCH_SIZE)
+            processPending()
             Result.success()
         } catch (e: Exception) {
             logsSvc.insert(
@@ -88,11 +88,12 @@ class InboxUploadWorker(
         }
     }
 
-    private suspend fun processBatch(batchSize: Int) {
-        val pending = repository.getPending(batchSize)
-        if (pending.isEmpty()) return
-
-        uploadRecursive(pending)
+    private suspend fun processPending() {
+        while (true) {
+            val pending = repository.getPending(BATCH_SIZE)
+            if (pending.isEmpty()) return
+            uploadRecursive(pending)
+        }
     }
 
     private suspend fun uploadRecursive(entities: List<InboxUploadEntity>) {
