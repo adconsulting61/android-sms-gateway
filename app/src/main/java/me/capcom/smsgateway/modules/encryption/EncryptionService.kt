@@ -18,6 +18,6 @@ class EncryptionService() {
     suspend fun encrypt(plainText: String): String {
         val algorithm = EncryptionProviderFactory.DEFAULT_ALGORITHM
         val data = EncryptionProviderFactory.create(algorithm).encrypt(plainText)
-        return "$algorithm$data"
+        return "\$$algorithm\$$data"
     }
 }
