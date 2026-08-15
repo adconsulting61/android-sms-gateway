@@ -159,19 +159,22 @@ against Android's own bionic loader. Do not substitute the official GitHub
 release binary for Linux/arm64: that one is non-PIE and fails on Android with
 `unexpected e_type: 2`.
 
-> **Status: not yet confirmed on-device.** The APK builds and the binary is
-> verified present in the package at the right path, but as of 2026-08-15 no
-> end-to-end test result has been reported — it has *not* been confirmed that
-> `sms.valorsystems.app` still answers with the Termux tunnel stopped and
-> only the embedded one running. Until that's confirmed, treat the Termux
-> setup below as the known-good fallback.
+> **Status: confirmed working on-device, 2026-08-15.** With Termux fully
+> closed (no `cloudflared` process running there at all) and the tunnel
+> token pasted into Settings → Local Server → "Cloudflare Tunnel Token",
+> restarting Local Server brought the embedded tunnel up on its own —
+> `curl -u sms:<password> https://sms.valorsystems.app/device` returned a
+> fresh `lastSeen` timestamp and the real SIM list. Termux is no longer
+> part of the setup at all; it can be uninstalled from the phone. Its setup
+> steps stay documented below only as historical record / a fallback if the
+> embedded approach ever needs to be debugged by comparison.
 
-### Previous approach: cloudflared in Termux (superseded, known-good fallback)
+### Superseded: cloudflared in Termux (historical, no longer used)
 
-This was the original setup, and it's the one actually verified end-to-end.
-It stays documented because the embedded replacement above is still
-unconfirmed. The two are mutually exclusive in practice — running both at
-once just means two connectors serving the same hostname.
+This was the original setup, before `cloudflared` was embedded directly in
+the app (above). Kept here only for reference — there's no reason to run
+this alongside the embedded tunnel; doing so just means two connectors
+serving the same hostname.
 
 - Termux installed from **F-Droid**, not the Play Store
 - Battery optimization disabled for Termux (Settings → Apps → Termux →
